@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0](https://github.com/drumandbytes/delistd/compare/v2.3.4...v2.4.0) (2026-11-10)
+
+
+### Features
+
+* **site:** add a comparison page with Incogni and DeleteMe at /compare/ ([#279](https://github.com/drumandbytes/delistd/issues/279)) ([3bcb1f4](https://github.com/drumandbytes/delistd/commit/3bcb1f46e2c32715e78ea82f280b7787d099c37f))
+
 ## [2.3.4](https://github.com/drumandbytes/delistd/compare/v2.3.3...v2.3.4) (2026-11-10)
 
 
