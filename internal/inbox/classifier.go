@@ -43,9 +43,9 @@ var (
 		regexp.MustCompile(`(?i)we\s+have\s+(removed|deleted)`),
 		regexp.MustCompile(`(?i)no\s+longer\s+(have|hold|store)\s+your\s+(data|information)`),
 		// Replies sent through privacy services (Retention.com, DataGrail, TrustSuperset)
-		regexp.MustCompile(`(?i)processed\s+your\s+opt[\s-]?out`),
-		regexp.MustCompile(`(?i)marked\s+for\s+removal`),
-		regexp.MustCompile(`(?i)permanently\s+deleted\s+from\s+our\s+(systems?|records|databases?)`),
+		regexp.MustCompile(`(?i)(have|has)\s+(now\s+)?processed\s+your\s+opt[\s-]?out`),
+		regexp.MustCompile(`(?i)(has|have)\s+been\s+marked\s+for\s+removal`),
+		regexp.MustCompile(`(?i)(has|have)\s+been\s+permanently\s+deleted`),
 		regexp.MustCompile(`(?i)request\s+to\s+exercise\s+your\s+[\w\s-]{0,60}?has\s+been\s+completed`),
 	}
 
@@ -121,7 +121,8 @@ var (
 		regexp.MustCompile(`(?i)thank\s+you\s+for\s+(your\s+)?(inquiry|email|contacting|reaching|privacy)`),
 		regexp.MustCompile(`(?i)we\s+(have\s+)?received\s+your\s+(request|email|inquiry)`),
 		regexp.MustCompile(`(?i)we\s+(have\s+)?received\s+your\s+[\w-]+\s+request`), // "received your Deletion request"
-		regexp.MustCompile(`(?i)(receive|get)\s+(another|an?|a\s+further)\s+(email|message|notification|update)\s+(once|when)`),
+		regexp.MustCompile(`(?i)(receive|get)\s+(another|an?|a\s+further)\s+(email|message|notification|update)`),
+		regexp.MustCompile(`(?i)once\s+(we\s+have|we've|it\s+has\s+been|your\s+request\s+has\s+been)\s+(processed|completed)`),
 		regexp.MustCompile(`(?i)(has\s+been\s+)?assigned\s+(a\s+)?(ticket|case|reference)\s*(number|#|id)?`),
 		regexp.MustCompile(`(?i)one\s+of\s+our\s+.{0,30}(will\s+)?(reach\s+out|respond|contact)`),
 		regexp.MustCompile(`(?i)ticket\s+(has\s+been\s+)?(created|opened|received)`),
@@ -226,6 +227,15 @@ var (
 		"mailsystem",
 	}
 )
+
+// scoreOrder is the tie-break order of ClassifyResponse's scores.
+var scoreOrder = []ResponseType{
+	ResponsePending,
+	ResponseConfirmationRequired,
+	ResponseFormRequired,
+	ResponseRejected,
+	ResponseSuccess,
+}
 
 // ClassifyResponse analyzes an email and determines the response type
 func ClassifyResponse(email *Email) ClassifiedResponse {
@@ -351,9 +361,12 @@ func ClassifyResponse(email *Email) ClassifiedResponse {
 		scores[ResponseConfirmationRequired] += 2
 	}
 
+	// Fixed order, so ties are decided the same way every run (map order is
+	// random). Terminal verdicts come last: on a tie the non-terminal one wins.
 	maxScore := 0
 	secondScore := 0
-	for responseType, score := range scores {
+	for _, responseType := range scoreOrder {
+		score := scores[responseType]
 		if score > maxScore {
 			secondScore = maxScore
 			maxScore = score
