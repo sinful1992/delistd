@@ -42,6 +42,11 @@ var (
 		regexp.MustCompile(`(?i)opt[\s-]?out\s+(request\s+)?(is\s+)?(complete|confirmed)`),
 		regexp.MustCompile(`(?i)we\s+have\s+(removed|deleted)`),
 		regexp.MustCompile(`(?i)no\s+longer\s+(have|hold|store)\s+your\s+(data|information)`),
+		// Replies sent through privacy services (Retention.com, DataGrail, TrustSuperset)
+		regexp.MustCompile(`(?i)processed\s+your\s+opt[\s-]?out`),
+		regexp.MustCompile(`(?i)marked\s+for\s+removal`),
+		regexp.MustCompile(`(?i)permanently\s+deleted\s+from\s+our\s+(systems?|records|databases?)`),
+		regexp.MustCompile(`(?i)request\s+to\s+exercise\s+your\s+[\w\s-]{0,60}?has\s+been\s+completed`),
 	}
 
 	// Form required indicators
@@ -115,6 +120,8 @@ var (
 		// Request acknowledgment patterns (from real broker emails)
 		regexp.MustCompile(`(?i)thank\s+you\s+for\s+(your\s+)?(inquiry|email|contacting|reaching|privacy)`),
 		regexp.MustCompile(`(?i)we\s+(have\s+)?received\s+your\s+(request|email|inquiry)`),
+		regexp.MustCompile(`(?i)we\s+(have\s+)?received\s+your\s+[\w-]+\s+request`), // "received your Deletion request"
+		regexp.MustCompile(`(?i)(receive|get)\s+(another|an?|a\s+further)\s+(email|message|notification|update)\s+(once|when)`),
 		regexp.MustCompile(`(?i)(has\s+been\s+)?assigned\s+(a\s+)?(ticket|case|reference)\s*(number|#|id)?`),
 		regexp.MustCompile(`(?i)one\s+of\s+our\s+.{0,30}(will\s+)?(reach\s+out|respond|contact)`),
 		regexp.MustCompile(`(?i)ticket\s+(has\s+been\s+)?(created|opened|received)`),
