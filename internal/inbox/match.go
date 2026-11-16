@@ -52,7 +52,8 @@ var genericNames = map[string]bool{
 }
 
 var (
-	hostRe    = regexp.MustCompile(`(?i)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+`)
+	// A host ends in a letters-only TLD, so "11.16.2026" or "v2.3" is no host.
+	hostRe    = regexp.MustCompile(`(?i)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}\b`)
 	nonWordRe = regexp.MustCompile(`[^a-z0-9]+`)
 )
 
@@ -160,30 +161,32 @@ func (idx brokerIndex) match(from, fromDomain, fromName, subject string) (broker
 	if !ok {
 		return broker.Broker{}, false
 	}
-	// Strongest hint first. Once a hint names any broker, later (weaker)
-	// hints are not consulted, so an ambiguous strong hint never falls
-	// through to a weak one.
-	for _, found := range []func() map[string]broker.Broker{
-		func() map[string]broker.Broker { return idx.byDomainHint(fromName+" "+subject, base) },
-		func() map[string]broker.Broker { return idx.byLabelHint(strings.TrimSuffix(fromDomain, base)) },
-		func() map[string]broker.Broker { return idx.byNameHint(fromName) },
-	} {
-		if f := found(); len(f) > 0 {
-			return only(f)
-		}
+	// Strongest hint first. A written host name decides on its own: if it
+	// names no single broker, nothing matches - a lookalike such as
+	// "revoptimal.com.evil.io" must not fall through to a name match. Below
+	// that, the first stage that names any broker decides, so an ambiguous
+	// strong hint never falls through to a weak one.
+	if found, sawHost := idx.byDomainHint(fromName+" "+subject, base); sawHost {
+		return only(found)
 	}
-	return broker.Broker{}, false
+	if found := idx.byLabelHint(strings.TrimSuffix(fromDomain, base)); len(found) > 0 {
+		return only(found)
+	}
+	return only(idx.byNameHint(fromName))
 }
 
 // byDomainHint matches host names and email addresses written in text
 // ("Privacy Team at visualvisitor.com", "privacy@lightcast.io").
-func (idx brokerIndex) byDomainHint(text, service string) map[string]broker.Broker {
-	found := map[string]broker.Broker{}
+// sawHost reports whether the text holds any host other than a privacy
+// service's own.
+func (idx brokerIndex) byDomainHint(text, service string) (found map[string]broker.Broker, sawHost bool) {
+	found = map[string]broker.Broker{}
 	for _, h := range hostRe.FindAllString(strings.ToLower(text), -1) {
 		h = strings.TrimPrefix(h, "www.")
 		if _, isService := serviceBase(h); isService || h == service {
 			continue
 		}
+		sawHost = true
 		// privacy.lightcast.io -> lightcast.io, never below two labels.
 		for d := h; strings.Count(d, ".") >= 1; d = d[strings.Index(d, ".")+1:] {
 			if b, ok := idx.byDomain[d]; ok {
@@ -192,7 +195,7 @@ func (idx brokerIndex) byDomainHint(text, service string) map[string]broker.Brok
 			}
 		}
 	}
-	return found
+	return found, sawHost
 }
 
 // byLabelHint matches a sender subdomain label to a broker domain's first

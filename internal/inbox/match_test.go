@@ -130,6 +130,11 @@ func TestMatchHintRules(t *testing.T) {
 		{"m.onetrust.com", "Acme Data", "about acme.com", "acme"},
 		// Unknown broker in catalog for the relay: no match, no panic.
 		{"retention.com", "", "", ""},
+		// A lookalike host decides alone: no fall-through to the name.
+		{"trustsuperset.com", "Privacy Team at acme.com.evil.io", "", ""},
+		{"m.onetrust.com", "On behalf of Acme", "see evil.io", ""},
+		// Dates and versions are not hosts, so the name still matches.
+		{"m.onetrust.com", "On behalf of Acme", "Request 11.16.2026 v2.3", "acme"},
 		// Trailing dot and case in the sender host.
 		{"M.OneTrust.com.", "On behalf of Acme", "", "acme"},
 	}
