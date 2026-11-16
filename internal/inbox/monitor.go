@@ -23,6 +23,7 @@ type Monitor struct {
 	config  config.InboxConfig
 	client  *client.Client
 	brokers map[string]broker.Broker // Map of email domain to broker
+	index   brokerIndex
 }
 
 // Email represents a parsed email from a broker
@@ -49,7 +50,11 @@ func NewMonitor(cfg config.InboxConfig, brokerList []broker.Broker) *Monitor {
 			parts := strings.Split(b.Email, "@")
 			if len(parts) == 2 {
 				domain := strings.ToLower(parts[1])
-				brokerMap[domain] = b
+				// A broker on a free mailbox (gmail.com) owns its address,
+				// not the domain: matched by address in brokerIndex.
+				if !freeMail[domain] {
+					brokerMap[domain] = b
+				}
 			}
 		}
 		// Also map by website domain
@@ -61,6 +66,7 @@ func NewMonitor(cfg config.InboxConfig, brokerList []broker.Broker) *Monitor {
 	return &Monitor{
 		config:  cfg,
 		brokers: brokerMap,
+		index:   buildIndex(brokerMap, brokerList),
 	}
 }
 
@@ -283,11 +289,13 @@ func (m *Monitor) parseMessage(msg *imap.Message, section *imap.BodySectionName)
 	}
 
 	// Try to match to a known broker
-	if email.FromDomain != "" {
-		if b, ok := m.brokers[email.FromDomain]; ok {
-			email.BrokerID = b.ID
-			email.BrokerName = b.Name
-		}
+	idx := m.index
+	if idx.byDomain == nil {
+		idx.byDomain = m.brokers
+	}
+	if b, ok := idx.match(email.From, email.FromDomain, email.FromName, email.Subject); ok {
+		email.BrokerID = b.ID
+		email.BrokerName = b.Name
 	}
 
 	r := msg.GetBody(section)
