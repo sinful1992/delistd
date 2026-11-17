@@ -9,6 +9,7 @@
 * **inbox:** classifier reads Retention.com, DataGrail and TrustSuperset confirmations as success, and "you will receive another email once…" acknowledgements as pending. Confirmation phrases must be in done tense ("has been permanently deleted"), so a promise ("will be deleted within 45 days") is never Confirmed.
 * **inbox:** classifier ties are broken in a fixed order (pending before success) instead of random map order, so the same reply always gets the same verdict.
 * **inbox:** a host in the sender name that belongs to no broker ("revoptimal.com.evil.io") blocks the name match instead of falling through to it.
+* **inbox:** free-mail hosts (the requester's own gmail address in a subject), the inbox's own domain and file names ("report.pdf") are not broker hints and don't block a name match.
 
 ## [2.3.4](https://github.com/drumandbytes/delistd/compare/v2.3.3...v2.3.4) (2026-11-10)
 
