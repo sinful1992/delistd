@@ -66,6 +66,7 @@ type namedBroker struct {
 type brokerIndex struct {
 	byDomain  map[string]broker.Broker // email and website domain
 	byAddress map[string]broker.Broker // full address, for brokers on free mail
+	ownDomain string                   // the inbox's own domain: the requester, never a broker
 	byID      map[string]broker.Broker
 	byLabel   map[string][]broker.Broker // first label of a broker domain ("6sense")
 	names     []namedBroker
@@ -175,6 +176,22 @@ func (idx brokerIndex) match(from, fromDomain, fromName, subject string) (broker
 	return only(idx.byNameHint(fromName))
 }
 
+// fileExts are "hosts" that are really file names ("report.pdf").
+var fileExts = map[string]bool{
+	"pdf": true, "png": true, "jpg": true, "jpeg": true, "gif": true, "doc": true,
+	"docx": true, "xls": true, "xlsx": true, "csv": true, "txt": true, "zip": true,
+	"htm": true, "html": true, "json": true, "xml": true, "eml": true,
+}
+
+// notAHint reports hosts that say nothing about the broker: free-mail
+// domains (the requester's own address in a subject) and file names.
+func notAHint(h string) bool {
+	if freeMail[h] {
+		return true
+	}
+	return fileExts[h[strings.LastIndex(h, ".")+1:]]
+}
+
 // byDomainHint matches host names and email addresses written in text
 // ("Privacy Team at visualvisitor.com", "privacy@lightcast.io").
 // sawHost reports whether the text holds any host other than a privacy
@@ -183,7 +200,7 @@ func (idx brokerIndex) byDomainHint(text, service string) (found map[string]brok
 	found = map[string]broker.Broker{}
 	for _, h := range hostRe.FindAllString(strings.ToLower(text), -1) {
 		h = strings.TrimPrefix(h, "www.")
-		if _, isService := serviceBase(h); isService || h == service {
+		if _, isService := serviceBase(h); isService || h == service || notAHint(h) || h == idx.ownDomain {
 			continue
 		}
 		sawHost = true

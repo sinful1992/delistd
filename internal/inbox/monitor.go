@@ -63,10 +63,14 @@ func NewMonitor(cfg config.InboxConfig, brokerList []broker.Broker) *Monitor {
 		}
 	}
 
+	index := buildIndex(brokerMap, brokerList)
+	if at := strings.LastIndex(cfg.Email, "@"); at >= 0 {
+		index.ownDomain = strings.ToLower(cfg.Email[at+1:])
+	}
 	return &Monitor{
 		config:  cfg,
 		brokers: brokerMap,
-		index:   buildIndex(brokerMap, brokerList),
+		index:   index,
 	}
 }
 

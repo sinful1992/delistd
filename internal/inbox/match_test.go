@@ -179,3 +179,24 @@ func TestMatchFreeMailBrokerByAddress(t *testing.T) {
 		}
 	}
 }
+
+// The requester's own address or a file name in the subject is no broker
+// hint and must not block a name match (review N1).
+func TestMatchIgnoresRequesterAndFileHosts(t *testing.T) {
+	list := []broker.Broker{{ID: "acme", Name: "Acme, Inc.", Email: "privacy@acme.com"}}
+	m := NewMonitor(config.InboxConfig{Email: "me@Home-Domain.uk"}, list)
+	cases := []struct{ name, subject, want string }{
+		{"On behalf of Acme", "Your Privacy Request for jane@gmail.com", "acme"},
+		{"On behalf of Acme", "Request for me@home-domain.uk", "acme"},
+		{"On behalf of Acme", "report.PDF attached", "acme"},
+		{"On behalf of Acme", "Your data export: data.csv and photo.jpeg", "acme"},
+		// A real unknown host still blocks.
+		{"On behalf of Acme", "see other-broker.com", ""},
+	}
+	for _, c := range cases {
+		b, ok := m.index.match("noreply@m.onetrust.com", "m.onetrust.com", c.name, c.subject)
+		if (c.want == "") == ok || b.ID != c.want {
+			t.Errorf("%q %q: got %q ok=%v, want %q", c.name, c.subject, b.ID, ok, c.want)
+		}
+	}
+}
